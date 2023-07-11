@@ -1,0 +1,866 @@
+{
+ "cells": [
+  {
+   "attachments": {},
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "Qxwy6f3gHAdZ"
+   },
+   "source": [
+    "# Fake news detection using ML \n",
+    "MERCELYN KADIMA SKADCA2011"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": []
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "id": "dfwl6OjZHAdv"
+   },
+   "outputs": [],
+   "source": [
+    "import pandas as pd\n",
+    "import numpy as np\n",
+    "import matplotlib.pyplot as plt\n",
+    "import seaborn as sns \n",
+    "from sklearn.feature_extraction.text import CountVectorizer\n",
+    "from sklearn.feature_extraction.text import TfidfTransformer\n",
+    "from sklearn import feature_extraction, linear_model, model_selection, preprocessing\n",
+    "from sklearn.metrics import accuracy_score\n",
+    "from sklearn.model_selection import train_test_split\n",
+    "from sklearn.pipeline import Pipeline"
+   ]
+  },
+  {
+   "attachments": {},
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "HxwmikmWHAdx"
+   },
+   "source": [
+    "## Read datasets"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "id": "C5lQx--NHAdy"
+   },
+   "outputs": [],
+   "source": [
+    "fake = pd.read_csv(\"C:\\FAKE NEWS/Fake.csv\")\n",
+    "true = pd.read_csv(\"C:\\FAKE NEWS/True.csv\")"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "colab": {
+     "base_uri": "https://localhost:8080/"
+    },
+    "id": "0MXl5oLRHAdz",
+    "outputId": "5c098a34-e58a-417c-cdf7-ee2a1a02ed27"
+   },
+   "outputs": [],
+   "source": [
+    "fake.shape"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "colab": {
+     "base_uri": "https://localhost:8080/"
+    },
+    "id": "OZ7f-FmaHAd2",
+    "outputId": "16ab437d-ad29-4499-c844-ce6cbf57db08"
+   },
+   "outputs": [],
+   "source": [
+    "true.shape"
+   ]
+  },
+  {
+   "attachments": {},
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "Uo2aP8AGHAd3"
+   },
+   "source": [
+    "## Data cleaning and preparation"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "id": "ujRtiuYOHAd4"
+   },
+   "outputs": [],
+   "source": [
+    "# Add flag to track fake and real\n",
+    "fake['target'] = 'fake'\n",
+    "true['target'] = 'true'"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "colab": {
+     "base_uri": "https://localhost:8080/"
+    },
+    "id": "hA6piZK_HAd4",
+    "outputId": "a13cfb11-7957-411a-ed4c-a5d6ee1cd54b"
+   },
+   "outputs": [],
+   "source": [
+    "# Concatenate dataframes\n",
+    "data = pd.concat([fake, true]).reset_index(drop = True)\n",
+    "data.shape"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "id": "lCrIVIuIHAd5"
+   },
+   "outputs": [],
+   "source": [
+    "# Shuffle the data\n",
+    "from sklearn.utils import shuffle\n",
+    "data = shuffle(data)\n",
+    "data = data.reset_index(drop=True)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "colab": {
+     "base_uri": "https://localhost:8080/",
+     "height": 195
+    },
+    "id": "r-5xdIsCHAd6",
+    "outputId": "0aac83ee-16da-4e5c-edfb-5575db08b885"
+   },
+   "outputs": [],
+   "source": [
+    "# Check the data\n",
+    "data.head()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "colab": {
+     "base_uri": "https://localhost:8080/",
+     "height": 195
+    },
+    "id": "jQX_rGPSHAd7",
+    "outputId": "082f57ce-41ef-4e92-fe3b-943cd01a745b"
+   },
+   "outputs": [],
+   "source": [
+    "# Removing the date (we won't use it for the analysis)\n",
+    "data.drop([\"date\"],axis=1,inplace=True)\n",
+    "data.head()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "colab": {
+     "base_uri": "https://localhost:8080/",
+     "height": 195
+    },
+    "id": "PPAhAZ6kHAd8",
+    "outputId": "2a7ade1b-017d-4ba8-e47b-4861fab0b44d"
+   },
+   "outputs": [],
+   "source": [
+    "# Removing the title (we will only use the text)\n",
+    "data.drop([\"title\"],axis=1,inplace=True)\n",
+    "data.head()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "colab": {
+     "base_uri": "https://localhost:8080/",
+     "height": 195
+    },
+    "id": "B4hUdA6vHAd9",
+    "outputId": "ce54dd03-8215-4c51-d25b-9fafbf49b3b4"
+   },
+   "outputs": [],
+   "source": [
+    "# Convert to lowercase\n",
+    "\n",
+    "data['text'] = data['text'].apply(lambda x: x.lower())\n",
+    "data.head()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "id": "feRvxd5zHAd9"
+   },
+   "outputs": [],
+   "source": [
+    "# Remove punctuation\n",
+    "\n",
+    "import string\n",
+    "\n",
+    "def punctuation_removal(text):\n",
+    "    all_list = [char for char in text if char not in string.punctuation]\n",
+    "    clean_str = ''.join(all_list)\n",
+    "    return clean_str\n",
+    "\n",
+    "data['text'] = data['text'].apply(punctuation_removal)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "colab": {
+     "base_uri": "https://localhost:8080/",
+     "height": 195
+    },
+    "id": "u-8KoBQBHAd-",
+    "outputId": "f5a41f54-6701-4857-e3f0-3c9c085d5bd4"
+   },
+   "outputs": [],
+   "source": [
+    "# Check\n",
+    "data.head()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "colab": {
+     "base_uri": "https://localhost:8080/"
+    },
+    "id": "L889apOMHAd_",
+    "outputId": "90fa6776-d2d1-4c73-b0eb-e67c51b85eb5"
+   },
+   "outputs": [],
+   "source": [
+    "# Removing stopwords\n",
+    "import nltk\n",
+    "nltk.download('stopwords')\n",
+    "from nltk.corpus import stopwords\n",
+    "stop = stopwords.words('english')\n",
+    "\n",
+    "data['text'] = data['text'].apply(lambda x: ' '.join([word for word in x.split() if word not in (stop)]))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "colab": {
+     "base_uri": "https://localhost:8080/",
+     "height": 195
+    },
+    "id": "jOke-E9THAeA",
+    "outputId": "7026d38d-9da0-48ab-969d-c225588089ec"
+   },
+   "outputs": [],
+   "source": [
+    "data.head()"
+   ]
+  },
+  {
+   "attachments": {},
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "_0F_NPU5HAeB"
+   },
+   "source": [
+    "## Basic data exploration"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "colab": {
+     "base_uri": "https://localhost:8080/",
+     "height": 530
+    },
+    "id": "SFjWiuazHAeC",
+    "outputId": "9d920f0e-3686-4086-c2f5-89f81f0bf6cd"
+   },
+   "outputs": [],
+   "source": [
+    "# How many articles per subject?\n",
+    "print(data.groupby(['subject'])['text'].count())\n",
+    "data.groupby(['subject'])['text'].count().plot(kind=\"bar\")\n",
+    "plt.show()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "colab": {
+     "base_uri": "https://localhost:8080/",
+     "height": 358
+    },
+    "id": "ZufCAhjrHAeD",
+    "outputId": "3e07c5c8-8ed0-4e1b-c1ea-1fd5b7483e31"
+   },
+   "outputs": [],
+   "source": [
+    "# How many fake and real articles?\n",
+    "print(data.groupby(['target'])['text'].count())\n",
+    "data.groupby(['target'])['text'].count().plot(kind=\"bar\")\n",
+    "plt.show()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "colab": {
+     "base_uri": "https://localhost:8080/",
+     "height": 380
+    },
+    "id": "7e-O7OcjHAeD",
+    "outputId": "0c35f088-b617-4b81-a60f-fabdd75f7f14"
+   },
+   "outputs": [],
+   "source": [
+    "# Word cloud for fake news\n",
+    "from wordcloud import WordCloud\n",
+    "\n",
+    "fake_data = data[data[\"target\"] == \"fake\"]\n",
+    "all_words = ' '.join([text for text in fake_data.text])\n",
+    "\n",
+    "wordcloud = WordCloud(width= 800, height= 500,\n",
+    "                          max_font_size = 110,\n",
+    "                          collocations = False).generate(all_words)\n",
+    "\n",
+    "plt.figure(figsize=(10,7))\n",
+    "plt.imshow(wordcloud, interpolation='bilinear')\n",
+    "plt.axis(\"off\")\n",
+    "plt.show()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "colab": {
+     "base_uri": "https://localhost:8080/",
+     "height": 380
+    },
+    "id": "SlHx_D7pHAeE",
+    "outputId": "34a1798a-071f-4fa8-c29f-754e0ad7498d"
+   },
+   "outputs": [],
+   "source": [
+    "# Word cloud for real news\n",
+    "from wordcloud import WordCloud\n",
+    "\n",
+    "real_data = data[data[\"target\"] == \"true\"]\n",
+    "all_words = ' '.join([text for text in fake_data.text])\n",
+    "\n",
+    "wordcloud = WordCloud(width= 800, height= 500,\n",
+    "                          max_font_size = 110,\n",
+    "                          collocations = False).generate(all_words)\n",
+    "\n",
+    "plt.figure(figsize=(10,7))\n",
+    "plt.imshow(wordcloud, interpolation='bilinear')\n",
+    "plt.axis(\"off\")\n",
+    "plt.show()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "id": "2wIugzTIHAeF"
+   },
+   "outputs": [],
+   "source": [
+    "# Most frequent words counter (Code adapted from https://www.kaggle.com/rodolfoluna/fake-news-detector)   \n",
+    "from nltk import tokenize\n",
+    "\n",
+    "token_space = tokenize.WhitespaceTokenizer()\n",
+    "\n",
+    "def counter(text, column_text, quantity):\n",
+    "    all_words = ' '.join([text for text in text[column_text]])\n",
+    "    token_phrase = token_space.tokenize(all_words)\n",
+    "    frequency = nltk.FreqDist(token_phrase)\n",
+    "    df_frequency = pd.DataFrame({\"Word\": list(frequency.keys()),\n",
+    "                                   \"Frequency\": list(frequency.values())})\n",
+    "    df_frequency = df_frequency.nlargest(columns = \"Frequency\", n = quantity)\n",
+    "    plt.figure(figsize=(12,8))\n",
+    "    ax = sns.barplot(data = df_frequency, x = \"Word\", y = \"Frequency\", color = 'blue')\n",
+    "    ax.set(ylabel = \"Count\")\n",
+    "    plt.xticks(rotation='vertical')\n",
+    "    plt.show()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "colab": {
+     "base_uri": "https://localhost:8080/",
+     "height": 534
+    },
+    "id": "efZy4WqjHAeG",
+    "outputId": "29ed6a6c-1970-4a86-8e91-8438ba21902e"
+   },
+   "outputs": [],
+   "source": [
+    "# Most frequent words in fake news\n",
+    "counter(data[data[\"target\"] == \"fake\"], \"text\", 20)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "colab": {
+     "base_uri": "https://localhost:8080/",
+     "height": 548
+    },
+    "id": "OEpi0YllHAeG",
+    "outputId": "773a1ad1-d2c9-4222-fe3a-b7744d697b9f"
+   },
+   "outputs": [],
+   "source": [
+    "# Most frequent words in real news\n",
+    "counter(data[data[\"target\"] == \"true\"], \"text\", 20)"
+   ]
+  },
+  {
+   "attachments": {},
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "p6ZxKwHNHAeH"
+   },
+   "source": [
+    "## Modeling"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "id": "7RuBuf3IHAeH"
+   },
+   "outputs": [],
+   "source": [
+    "# Function to plot the confusion matrix (code from https://scikit-learn.org/stable/auto_examples/model_selection/plot_confusion_matrix.html)\n",
+    "from sklearn import metrics\n",
+    "import itertools\n",
+    "\n",
+    "def plot_confusion_matrix(cm, classes,\n",
+    "                          normalize=False,\n",
+    "                          title='Confusion matrix',\n",
+    "                          cmap=plt.cm.Blues):\n",
+    "    \n",
+    "    plt.imshow(cm, interpolation='nearest', cmap=cmap)\n",
+    "    plt.title(title)\n",
+    "    plt.colorbar()\n",
+    "    tick_marks = np.arange(len(classes))\n",
+    "    plt.xticks(tick_marks, classes, rotation=45)\n",
+    "    plt.yticks(tick_marks, classes)\n",
+    "\n",
+    "    if normalize:\n",
+    "        cm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]\n",
+    "        print(\"Normalized confusion matrix\")\n",
+    "    else:\n",
+    "        print('Confusion matrix, without normalization')\n",
+    "\n",
+    "    thresh = cm.max() / 2.\n",
+    "    for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):\n",
+    "        plt.text(j, i, cm[i, j],\n",
+    "                 horizontalalignment=\"center\",\n",
+    "                 color=\"white\" if cm[i, j] > thresh else \"black\")\n",
+    "\n",
+    "    plt.tight_layout()\n",
+    "    plt.ylabel('True label')\n",
+    "    plt.xlabel('Predicted label')"
+   ]
+  },
+  {
+   "attachments": {},
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "jbjCGLHhHAeK"
+   },
+   "source": [
+    "### Peparing the data"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "id": "aI8PPFokHAeK"
+   },
+   "outputs": [],
+   "source": [
+    "# Split the data\n",
+    "X_train,X_test,y_train,y_test = train_test_split(data['text'], data.target, test_size=0.2, random_state=42)"
+   ]
+  },
+  {
+   "attachments": {},
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "nxzHMRm5Qhzd"
+   },
+   "source": [
+    "# **Naive Bayes**\n",
+    "\n",
+    "\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "colab": {
+     "base_uri": "https://localhost:8080/"
+    },
+    "id": "kjFn6WexHAeQ",
+    "outputId": "00c9024f-cdc4-400e-80ef-366439b4229e"
+   },
+   "outputs": [],
+   "source": [
+    "dct = dict()\n",
+    "\n",
+    "from sklearn.naive_bayes import MultinomialNB\n",
+    "\n",
+    "NB_classifier = MultinomialNB()\n",
+    "pipe = Pipeline([('vect', CountVectorizer()),\n",
+    "                 ('tfidf', TfidfTransformer()),\n",
+    "                 ('model', NB_classifier)])\n",
+    "\n",
+    "model = pipe.fit(X_train, y_train)\n",
+    "prediction = model.predict(X_test)\n",
+    "print(\"accuracy: {}%\".format(round(accuracy_score(y_test, prediction)*100,2)))\n",
+    "\n",
+    "dct['Naive Bayes'] = round(accuracy_score(y_test, prediction)*100,2)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "id": "heC8TZXKV8rD"
+   },
+   "outputs": [],
+   "source": [
+    "cm = metrics.confusion_matrix(y_test, prediction)\n",
+    "plot_confusion_matrix(cm, classes=['Fake', 'Real'])"
+   ]
+  },
+  {
+   "attachments": {},
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "xskElBhWHAeL"
+   },
+   "source": [
+    "# **Logistic regression**"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "colab": {
+     "base_uri": "https://localhost:8080/"
+    },
+    "id": "mAcQUNlGHAeL",
+    "outputId": "f2d902ba-95bb-4766-c08e-d03d845b929a"
+   },
+   "outputs": [],
+   "source": [
+    "# Vectorizing and applying TF-IDF\n",
+    "from sklearn.linear_model import LogisticRegression\n",
+    "\n",
+    "pipe = Pipeline([('vect', CountVectorizer()),\n",
+    "                 ('tfidf', TfidfTransformer()),\n",
+    "                 ('model', LogisticRegression())])\n",
+    "\n",
+    "# Fitting the model\n",
+    "model = pipe.fit(X_train, y_train)\n",
+    "\n",
+    "# Accuracy\n",
+    "prediction = model.predict(X_test)\n",
+    "print(\"accuracy: {}%\".format(round(accuracy_score(y_test, prediction)*100,2)))\n",
+    "dct['Logistic Regression'] = round(accuracy_score(y_test, prediction)*100,2)\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "colab": {
+     "base_uri": "https://localhost:8080/",
+     "height": 328
+    },
+    "id": "urlI5cJ0HAeM",
+    "outputId": "79842433-f7b2-48bc-f95c-fd4613c4ee69"
+   },
+   "outputs": [],
+   "source": [
+    "cm = metrics.confusion_matrix(y_test, prediction)\n",
+    "plot_confusion_matrix(cm, classes=['Fake', 'Real'])"
+   ]
+  },
+  {
+   "attachments": {},
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "0KKyYvcRHAeM"
+   },
+   "source": [
+    "# **Decision Tree**"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "colab": {
+     "base_uri": "https://localhost:8080/"
+    },
+    "id": "gvGR_1IqHAeN",
+    "outputId": "bc8ec1bc-cce9-4e81-a1a3-7ba282d3b87e"
+   },
+   "outputs": [],
+   "source": [
+    "from sklearn.tree import DecisionTreeClassifier\n",
+    "\n",
+    "# Vectorizing and applying TF-IDF\n",
+    "pipe = Pipeline([('vect', CountVectorizer()),\n",
+    "                 ('tfidf', TfidfTransformer()),\n",
+    "                 ('model', DecisionTreeClassifier(criterion= 'entropy',\n",
+    "                                           max_depth = 20, \n",
+    "                                           splitter='best', \n",
+    "                                           random_state=42))])\n",
+    "# Fitting the model\n",
+    "model = pipe.fit(X_train, y_train)\n",
+    "\n",
+    "# Accuracy\n",
+    "prediction = model.predict(X_test)\n",
+    "print(\"accuracy: {}%\".format(round(accuracy_score(y_test, prediction)*100,2)))\n",
+    "dct['Decision Tree'] = round(accuracy_score(y_test, prediction)*100,2)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "colab": {
+     "base_uri": "https://localhost:8080/",
+     "height": 328
+    },
+    "id": "PFodjIGxHAeO",
+    "outputId": "0a973ff5-075c-47f3-e73b-f1a43c1a12ff"
+   },
+   "outputs": [],
+   "source": [
+    "cm = metrics.confusion_matrix(y_test, prediction)\n",
+    "plot_confusion_matrix(cm, classes=['Fake', 'Real'])"
+   ]
+  },
+  {
+   "attachments": {},
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "bd6dxglHHAeO"
+   },
+   "source": [
+    "# **Random Forest**"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "colab": {
+     "base_uri": "https://localhost:8080/"
+    },
+    "id": "aXqyzOeiHAeP",
+    "outputId": "0443ae32-c422-4cc4-a736-bd0263eb1477"
+   },
+   "outputs": [],
+   "source": [
+    "from sklearn.ensemble import RandomForestClassifier\n",
+    "\n",
+    "pipe = Pipeline([('vect', CountVectorizer()),\n",
+    "                 ('tfidf', TfidfTransformer()),\n",
+    "                 ('model', RandomForestClassifier(n_estimators=50, criterion=\"entropy\"))])\n",
+    "\n",
+    "model = pipe.fit(X_train, y_train)\n",
+    "prediction = model.predict(X_test)\n",
+    "print(\"accuracy: {}%\".format(round(accuracy_score(y_test, prediction)*100,2)))\n",
+    "dct['Random Forest'] = round(accuracy_score(y_test, prediction)*100,2)\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "colab": {
+     "base_uri": "https://localhost:8080/",
+     "height": 328
+    },
+    "id": "3Pf2TSpcHAeP",
+    "outputId": "76cc85bb-5cfc-4e48-f829-71952d0870e1"
+   },
+   "outputs": [],
+   "source": [
+    "from sklearn import metrics\n",
+    "cm = metrics.confusion_matrix(y_test, prediction)\n",
+    "plot_confusion_matrix(cm, classes=['Fake', 'Real'])"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": []
+  },
+  {
+   "attachments": {},
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "F3qgbSXLQNXi"
+   },
+   "source": [
+    "## **SVM**"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "id": "XPX09B-wHAeQ"
+   },
+   "outputs": [],
+   "source": [
+    "from sklearn import svm\n",
+    "from sklearn.pipeline import Pipeline\n",
+    "from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer\n",
+    "from sklearn.metrics import accuracy_score\n",
+    "\n",
+    "# Create a svm Classifier\n",
+    "clf = svm.SVC(kernel='linear')  # Linear Kernel\n",
+    "\n",
+    "pipe = Pipeline([('vect', CountVectorizer()),\n",
+    "                 ('tfidf', TfidfTransformer()),\n",
+    "                 ('model', clf)])\n",
+    "\n",
+    "model = pipe.fit(X_train, y_train)\n",
+    "prediction = model.predict(X_test)\n",
+    "accuracy = round(accuracy_score(y_test, prediction) * 100, 2)\n",
+    "\n",
+    "# Update the dictionary 'dct'\n",
+    "dct['SVM'] = accuracy\n",
+    "\n",
+    "print(\"accuracy: {}%\".format(accuracy))\n",
+    "\n",
+    "\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "id": "krx-Od4DV_Fa"
+   },
+   "outputs": [],
+   "source": [
+    "import numpy as np\n",
+    "import matplotlib.pyplot as plt\n",
+    "from sklearn import metrics\n",
+    "\n",
+    "cm = metrics.confusion_matrix(y_test, prediction)\n",
+    "\n",
+    "# Plot confusion matrix\n",
+    "plot_confusion_matrix(cm, classes=['Fake', 'Real'])\n",
+    "plt.show()\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# **Comparing** **Different Models**\n",
+    "import matplotlib.pyplot as plt\n",
+    "\n",
+    "# Define the dictionary\n",
+    "dct = {\"Category 1\": 95, \"Category 2\": 97, \"Category 3\": 93, \"Category 4\": 99}\n",
+    "\n",
+    "# Plot the bar chart\n",
+    "plt.figure(figsize=(8, 7))\n",
+    "plt.bar(list(dct.keys()), list(dct.values()))\n",
+    "\n",
+    "# Set y-axis limits and ticks\n",
+    "plt.ylim(90, 100)\n",
+    "plt.yticks([91, 92, 93, 94, 95, 96, 97, 98, 99, 100])\n",
+    "\n",
+    "# Display the chart\n",
+    "plt.show()\n"
+   ]
+  }
+ ],
+ "metadata": {
+  "accelerator": "GPU",
+  "colab": {
+   "name": "FakeNews(1).ipynb",
+   "provenance": []
+  },
+  "kernelspec": {
+   "display_name": "Python 3",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.11.3"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 1
+}
